@@ -1,6 +1,6 @@
 package app.passblack.patches.amoled
 
-import app.morphe.patcher.extensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.patch
 import app.passblack.patches.shared.PROTON_PASS_COMPATIBILITY
 
