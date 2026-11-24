@@ -16,7 +16,7 @@ val pureAmoledPatch = patch(
         val initializer = PassPaletteInitializerFingerprint.method
         val instructions = initializer.implementation!!.instructions
         require(instructions.isNotEmpty()) { "PassPalette initializer has no instructions" }
-        require(instructions.last().opcode.name == "RETURN_VOID") {
+        require(instructions.last().opcode.toString().replace("-", "_").equals("RETURN_VOID", ignoreCase = true)) {
             "Unexpected PassPalette initializer ending; refusing to patch an unknown build"
         }
 
