@@ -1,0 +1,5 @@
+Target: proton.android.pass.fdroid.apk
+Package: proton.android.pass.fdroid
+Version: 1.41.5 (14105000)
+SHA-256: 128785567e8bbc27cc8af16a59d57aa8f16d05096906551c4a48117e39e96fd8
+DEX classes3.dex: PassPalette, <clinit>, all nine target field IDs verified. Build and runtime untested.
