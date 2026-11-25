@@ -17,7 +17,7 @@ patches {
     // TODO: Update this section with your project details.
     about {
         name = "AMOLED Patches"
-        description = "Pure AMOLED patches for Android apps"
+        description = "Vibe Coding"
         source = "https://github.com/Koranoob1/A"
         author = "Pass Black contributors"
         contact = "Not configured"
