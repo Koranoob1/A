@@ -15,9 +15,9 @@ group = "app.passblack"
 patches {
     // TODO: Update this section with your project details.
     about {
-        name = "Pass Black Patches"
-        description = "Pure AMOLED theme patch for Proton Pass Android"
-        source = "https://github.com/pass-black/pass-black-patches"
+        name = "AMOLED Patches"
+        description = "Pure AMOLED patches for Android apps"
+        source = "https://github.com/Koranoob1/A"
         author = "Pass Black contributors"
         contact = "Not configured"
         website = "Not configured"
