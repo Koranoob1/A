@@ -35,7 +35,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ inputs.version }}
         run: |
-          cp patches/build/libs/*.mpp "patches-$VERSION.mpp"
+          ls -lh patches/build/libs/
+          MPP=$(find patches/build/libs -maxdepth 1 -name "*.mpp" ! -name "*sources*" ! -name "*javadoc*" | sort)
+          test "$(printf "%s\n" "$MPP" | grep -c .)" -eq 1
+          cp "$MPP" "patches-$VERSION.mpp"
           gh release create "v$VERSION" \
             "patches-$VERSION.mpp" \
             patches-list.json \
