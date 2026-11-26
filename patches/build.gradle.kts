@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "app.passblack"
-version = "1.1.1"
+version = "1.1.2"
 
 patches {
     // TODO: Update this section with your project details.

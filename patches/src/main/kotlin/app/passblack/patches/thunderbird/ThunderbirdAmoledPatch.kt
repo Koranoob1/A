@@ -21,6 +21,7 @@ val thunderbirdAmoledPatch = patch(
     description = "Sets Thunderbird dark theme surfaces to true black.",
     default = true
 ) {
+    dependsOn(thunderbirdResourcePatch)
     compatibleWith(
         Compatibility(
             name = "Thunderbird",
