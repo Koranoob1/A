@@ -11,13 +11,13 @@ plugins {
 }
 
 group = "app.passblack"
-version = "1.1.2"
+version = "1.1.3"
 
 patches {
     // TODO: Update this section with your project details.
     about {
         name = "AMOLED Patches"
-        description = "Vibe Coding"
+        description = "Vibe Coding | Proton Pass (F-Droid): 1.41.5 | Thunderbird: 25.0"
         source = "https://github.com/Koranoob1/A"
         author = "Pass Black contributors"
         contact = "Not configured"
