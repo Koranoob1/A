@@ -1,0 +1,56 @@
+name: Automatic App Update Check
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check latest app versions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PASS=$(curl -fLsS --retry 3 \
+            https://f-droid.org/api/v1/packages/proton.android.pass.fdroid |
+            jq -er '.suggestedVersionCode as $v |
+            .packages[] | select(.versionCode == $v) | .versionName')
+
+          TB=$(gh api 'repos/thunderbird/thunderbird-android/releases?per_page=100' \
+            --jq '[.[] | select(.draft == false and .prerelease == false and (.tag_name | startswith("THUNDERBIRD_")))] |
+            .[0].assets[].name' |
+            sed -nE 's/^thunderbird-([0-9.]+)\.apk$/\1/p')
+
+          test -n "$PASS"
+          test -n "$TB"
+
+          check_version() {
+            local package="$1"
+            local version="$2"
+
+            echo "$package: $version"
+
+            if jq -e --arg p "$package" --arg v "$version" \
+              'any(.patches[].compatiblePackages[]?;
+              .packageName == $p and
+              any(.targets[]?; .version == $v))' \
+              patches-list.json >/dev/null; then
+              echo "Already supported"
+            else
+              echo "NEW VERSION DETECTED"
+            fi
+          }
+
+          check_version proton.android.pass.fdroid "$PASS"
+          check_version net.thunderbird.android "$TB"
