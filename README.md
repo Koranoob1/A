@@ -31,3 +31,12 @@ Target versions are pinned. Compatibility with later versions is not guaranteed.
 This is an independent, unofficial project.
 
 **Made with Vibe Coding.**
+
+<!-- AUTO-COMPATIBILITY-START -->
+## Supported Versions
+
+| App | Supported versions |
+| --- | --- |
+| Proton Pass (F-Droid) | 1.41.5 |
+| Thunderbird | 25.0 |
+<!-- AUTO-COMPATIBILITY-END -->

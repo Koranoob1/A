@@ -18,6 +18,8 @@ done < candidates.tsv
 
 sed -i "s/^version = .*/version = \"$VERSION\"/" patches/build.gradle.kts
 
+DESCRIPTION=$(python3 scripts/update-docs.py --prepare)
+
 chmod +x gradlew
 
 ./gradlew :patches:buildAndroid \
@@ -34,6 +36,19 @@ unzip -p "patches-$VERSION.mpp" META-INF/MANIFEST.MF |
   tr -d '\r' | grep -Fx "Version: $VERSION"
 
 test "$(jq -er '.version' patches-list.json)" = "$VERSION"
+
+python3 - "patches-$VERSION.mpp" "$DESCRIPTION" <<'VERIFY'
+import sys
+import zipfile
+
+with zipfile.ZipFile(sys.argv[1]) as z:
+    manifest = z.read("META-INF/MANIFEST.MF").decode()
+    manifest = manifest.replace("\r\n", "\n").replace("\n ", "")
+    assert f"Description: {sys.argv[2]}" in manifest.splitlines()
+
+print("PASS: Bundle description verified")
+VERIFY
+
 
 while IFS=$'\t' read -r app package version; do
 
@@ -63,10 +78,11 @@ while IFS=$'\t' read -r app package version; do
 done < candidates.tsv
 
 jq -n \
+  --arg description "$DESCRIPTION" \
   --arg version "$VERSION" \
   --arg date "$(date -u +%Y-%m-%dT%H:%M:%S)" \
   --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/v$VERSION/patches-$VERSION.mpp" \
-  '{created_at:$date,description:"Vibe Coding",download_url:$url,signature_download_url:"",version:$version}' \
+  '{created_at:$date,description:$description,download_url:$url,signature_download_url:"",version:$version}' \
   > patches-bundle.json
 
 git config user.name "github-actions[bot]"
@@ -75,6 +91,8 @@ git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 git add patches/src/main/kotlin/app/passblack \
   patches/build.gradle.kts patches-bundle.json
 
+python3 scripts/update-docs.py
+git add README.md
 git add -f patches-list.json
 
 git commit -m "Automatic compatibility release $VERSION"
@@ -91,6 +109,6 @@ gh release create "v$VERSION" \
   "AMOLED-Patches-$VERSION-source.zip" \
   --verify-tag \
   --title "AMOLED Patches $VERSION" \
-  --generate-notes
+  --notes-file release-notes.md
 
 git push origin HEAD:main
