@@ -7,6 +7,11 @@ on:
 
 permissions:
   contents: read
+  issues: write
+
+concurrency:
+  group: amoled-release
+  cancel-in-progress: false
 
 jobs:
   check:
@@ -15,42 +20,108 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          ref: main
 
-      - name: Check latest app versions
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Detect and verify updates
         shell: bash
         run: |
           set -euo pipefail
 
-          PASS=$(curl -fLsS --retry 3 \
-            https://f-droid.org/api/v1/packages/proton.android.pass.fdroid |
-            jq -er '.suggestedVersionCode as $v |
-            .packages[] | select(.versionCode == $v) | .versionName')
+          curl -fL --retry 3 \
+            https://f-droid.org/api/v1/packages/proton.android.pass.fdroid \
+            -o proton.json
 
-          TB=$(gh api 'repos/thunderbird/thunderbird-android/releases?per_page=100' \
-            --jq '[.[] | select(.draft == false and .prerelease == false and (.tag_name | startswith("THUNDERBIRD_")))] |
-            .[0].assets[].name' |
+          PASS_CODE=$(jq -er '.suggestedVersionCode' proton.json)
+
+          PASS=$(jq -er --argjson c "$PASS_CODE" \
+            '.packages[] | select(.versionCode == $c) | .versionName' \
+            proton.json)
+
+          gh api 'repos/thunderbird/thunderbird-android/releases?per_page=100' \
+            > thunderbird.json
+
+          TB_URL=$(jq -er '
+            [.[] | select(
+              .draft == false and
+              .prerelease == false and
+              (.tag_name | startswith("THUNDERBIRD_"))
+            )][0].assets[] |
+            select(.name | test("^thunderbird-[0-9.]+\\.apk$")) |
+            .browser_download_url
+          ' thunderbird.json)
+
+          TB=$(basename "$TB_URL" |
             sed -nE 's/^thunderbird-([0-9.]+)\.apk$/\1/p')
 
-          test -n "$PASS"
           test -n "$TB"
 
-          check_version() {
-            local package="$1"
-            local version="$2"
+          test "$(jq -er '.version' patches-list.json)" = \
+            "$(jq -er '.version' patches-bundle.json)"
 
-            echo "$package: $version"
+          check_app() {
+            local app="$1"
+            local package="$2"
+            local version="$3"
+            local url="$4"
 
-            if jq -e --arg p "$package" --arg v "$version" \
+            echo "$app: $version"
+
+            local supported
+            supported=$(jq -r --arg p "$package" --arg v "$version" \
               'any(.patches[].compatiblePackages[]?;
-              .packageName == $p and
-              any(.targets[]?; .version == $v))' \
-              patches-list.json >/dev/null; then
+                .packageName == $p and
+                any(.targets[]?; .version == $v))' \
+              patches-list.json)
+
+            if [ "$supported" = true ]; then
               echo "Already supported"
-            else
-              echo "NEW VERSION DETECTED"
+              return
             fi
+
+            echo "NEW VERSION DETECTED"
+
+            if [ ! -f morphe-desktop.jar ]; then
+              curl -fL --retry 3 \
+                https://github.com/MorpheApp/morphe-desktop/releases/download/v2.4.0/morphe-desktop-2.4.0-all.jar \
+                -o morphe-desktop.jar
+            fi
+
+            curl -fL --retry 3 "$url" -o "$app.apk"
+
+            if bash scripts/verify-apk.sh \
+              "$app" "$app.apk" morphe-desktop.jar; then
+              STATUS="Baseline matched"
+            else
+              STATUS="Manual review required"
+            fi
+
+            TITLE="$app $version compatibility review"
+
+            COUNT=$(gh issue list --state open \
+              --limit 1000 --json title \
+              --jq '.' |
+              jq --arg t "$TITLE" \
+              '[.[] | select(.title == $t)] | length')
+
+            if [ "$COUNT" = 0 ]; then
+              gh issue create \
+                --title "$TITLE" \
+                --body "$STATUS. Upstream version: $version"
+            fi
+
+            echo "$STATUS"
           }
 
-          check_version proton.android.pass.fdroid "$PASS"
-          check_version net.thunderbird.android "$TB"
+          check_app proton-pass \
+            proton.android.pass.fdroid "$PASS" \
+            "https://f-droid.org/repo/proton.android.pass.fdroid_${PASS_CODE}.apk"
+
+          check_app thunderbird \
+            net.thunderbird.android "$TB" "$TB_URL"
