@@ -1,5 +1,60 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "0.0.0",
-  "patches": []
+  "version": "1.1.2",
+  "patches": [
+    {
+      "name": "Pure AMOLED",
+      "description": "Sets Proton Pass dark-mode backgrounds to true black while retaining the Proton accent palette.",
+      "default": true,
+      "category": null,
+      "compatiblePackages": [
+        {
+          "packageName": "proton.android.pass.fdroid",
+          "name": "Proton Pass F-Droid",
+          "description": null,
+          "apkFileType": "APK",
+          "appIconColor": "#000000",
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "1.41.5",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Pure AMOLED",
+      "description": "Sets Thunderbird dark theme surfaces to true black.",
+      "default": true,
+      "category": null,
+      "compatiblePackages": [
+        {
+          "packageName": "net.thunderbird.android",
+          "name": "Thunderbird",
+          "description": null,
+          "apkFileType": "APK",
+          "appIconColor": "#000000",
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "25.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    }
+  ]
 }
