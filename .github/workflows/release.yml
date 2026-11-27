@@ -43,6 +43,11 @@ jobs:
           fi
           sed -i "s/^version = .*/version = \"$VERSION\"/" patches/build.gradle.kts
 
+      - name: Prepare description
+        run: |
+          DESCRIPTION=$(python3 scripts/update-docs.py --prepare)
+          echo "DESCRIPTION=$DESCRIPTION" >> "$GITHUB_ENV"
+
       - name: Build patches
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -57,18 +62,33 @@ jobs:
           cp "$MPP" "patches-$VERSION.mpp"
           unzip -p "patches-$VERSION.mpp" META-INF/MANIFEST.MF | tr -d '\r' | grep -Fx "Version: $VERSION"
 
+      - name: Verify description
+        run: |
+          python3 - <<'VERIFY'
+          import os
+          import zipfile
+          with zipfile.ZipFile("patches-" + os.environ["VERSION"] + ".mpp") as z:
+              m = z.read("META-INF/MANIFEST.MF").decode()
+              m = m.replace("\r\n", "\n").replace("\n ", "")
+              assert "Description: " + os.environ["DESCRIPTION"] in m.splitlines()
+          print("PASS: Description verified")
+          VERIFY
+
       - name: Update bundle and source
         run: |
           jq -n \
+            --arg description "$DESCRIPTION" \
             --arg version "$VERSION" \
             --arg date "$(date -u +%Y-%m-%dT%H:%M:%S)" \
             --arg url "https://github.com/${GITHUB_REPOSITORY}/releases/download/v$VERSION/patches-$VERSION.mpp" \
-            '{created_at:$date,description:"Vibe Coding",download_url:$url,signature_download_url:"",version:$version}' \
+            '{created_at:$date,description:$description,download_url:$url,signature_download_url:"",version:$version}' \
             > patches-bundle.json
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add patches/build.gradle.kts patches-bundle.json patches-list.json
+          python3 scripts/update-docs.py
+          git add patches/build.gradle.kts patches-bundle.json README.md
+          git add -f patches-list.json
           git commit -m "Release AMOLED Patches $VERSION"
 
           git archive --format=zip \
@@ -76,11 +96,14 @@ jobs:
 
       - name: Publish release
         run: |
-          git push origin HEAD:main
+          git tag "v$VERSION"
+          git push origin "refs/tags/v$VERSION"
           gh release create "v$VERSION" \
             "patches-$VERSION.mpp" \
             patches-list.json \
             "AMOLED-Patches-$VERSION-source.zip" \
-            --target "$(git rev-parse HEAD)" \
+            --verify-tag \
             --title "AMOLED Patches $VERSION" \
-            --generate-notes
+            --notes "Updated Morphe bundle description and release automation. Existing AMOLED patches and supported app versions are unchanged."
+
+          git push origin HEAD:main
