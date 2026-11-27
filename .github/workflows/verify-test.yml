@@ -1,0 +1,40 @@
+name: AMOLED Compatibility Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Download test files
+        run: |
+          curl -fL --retry 3 \
+            https://github.com/MorpheApp/morphe-desktop/releases/download/v2.4.0/morphe-desktop-2.4.0-all.jar \
+            -o morphe-desktop.jar
+
+          curl -fL --retry 3 \
+            https://f-droid.org/repo/proton.android.pass.fdroid_14105000.apk \
+            -o proton-pass.apk
+
+          curl -fL --retry 3 \
+            https://github.com/thunderbird/thunderbird-android/releases/download/THUNDERBIRD_25_0/thunderbird-25.0.apk \
+            -o thunderbird.apk
+
+      - name: Verify compatibility
+        run: |
+          bash scripts/verify-apk.sh \
+            proton-pass proton-pass.apk morphe-desktop.jar
+
+          bash scripts/verify-apk.sh \
+            thunderbird thunderbird.apk morphe-desktop.jar
