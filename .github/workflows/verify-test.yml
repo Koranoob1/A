@@ -5,12 +5,13 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-java@v5
         with:
@@ -38,3 +39,45 @@ jobs:
 
           bash scripts/verify-apk.sh \
             thunderbird thunderbird.apk morphe-desktop.jar
+
+      - name: Build and test MPP
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew :patches:buildAndroid :patches:generatePatchesList --no-daemon
+
+          MPP=$(find patches/build/libs -maxdepth 1 -name '*.mpp' ! -name '*sources*' ! -name '*javadoc*')
+          test "$(printf '%s\\n' "$MPP" | grep -c .)" -eq 1
+
+          for app in proton-pass thunderbird; do
+            java -jar morphe-desktop.jar patch "$app.apk" \
+              --patches="$MPP" \
+              --out="$app-patched.apk" \
+              --result-file="$app-result.json" \
+              --validate --unsigned
+
+            case "$app" in
+              proton-pass)
+                PKG=proton.android.pass.fdroid
+                VER=1.41.5
+                ;;
+              thunderbird)
+                PKG=net.thunderbird.android
+                VER=25.0
+                ;;
+            esac
+
+            jq -e --arg p "$PKG" --arg v "$VER" '
+              .success == true and
+              .packageName == $p and
+              .packageVersion == $v and
+              .appliedPatches == ["Pure AMOLED"] and
+              .failedPatches == [] and
+              all(.stepResults[]; .success == true)
+            ' "$app-result.json"
+
+            test -s "$app-patched.apk"
+            echo "PASS: $app"
+          done
